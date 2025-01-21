@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deep's Dino</title>
+  <link href="https://fonts.googleapis.com/css2?family=Righteous&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #e6f3ff;  /* Very light blue for day mode */
+      --text-color: #535353;
+      --border-color: #ccc;
+    }
+
+    .dark-mode {
+      --bg-color: #1a1a1a;
+      --text-color: #ffffff;
+      --border-color: #444;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: var(--bg-color);
+      display: flex;
+      flex-direction: column;  /* Added for vertical stacking */
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      transition: background-color 0.5s;
+    }
+
+    .game-title {
+      font-family: 'Righteous', cursive;
+      font-size: 48px;
+      color: var(--text-color);
+      margin-bottom: 40px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+      letter-spacing: 2px;
+      position: relative;
+    }
+
+    .game-title::after {
+      content: '🦖';  /* Dinosaur emoji */
+      font-size: 40px;
+      position: absolute;
+      margin-left: 10px;
+    }
+
+    .game-container {
+      position: relative;
+      width: 100%;
+      height: 200px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      background-color: var(--bg-color);
+      border: 2px solid var(--border-color);
+      max-width: 800px;
+      border-radius: 15px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      overflow: hidden; /* Add this to contain the overlay */
+    }
+
+    .game-over-overlay {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 1000;
+    }
+
+    .game-over-text {
+      color: white;
+      font-size: 32px;
+      font-family: 'Righteous', cursive;
+      margin-bottom: 15px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .final-score {
+      color: white;
+      font-size: 24px;
+      font-family: 'Courier New', monospace;
+      margin-bottom: 20px;
+    }
+
+    .restart-button {
+      padding: 10px 20px;
+      font-size: 18px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .restart-button:hover {
+      background-color: #45a049;
+    }
+
+    .score-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      font-size: 20px;
+      font-family: 'Courier New', monospace;
+      background-color: var(--bg-color);
+      padding: 10px 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      border: 2px solid var(--border-color);
+      z-index: 1000;
+    }
+
+    .reset-button {
+      display: block;
+      margin-top: 10px;
+      padding: 5px 10px;
+      background-color: #4CAF50;  /* Changed to a softer green */
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      transition: background-color 0.3s;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      width: 100%;  /* Make button fill the container width */
+    }
+
+    .reset-button:hover {
+      background-color: #45a049;  /* Darker shade for hover */
+    }
+
+    .dark-mode .reset-button {
+      background-color: #3d8b40;  /* Slightly darker green for dark mode */
+    }
+
+    .dark-mode .reset-button:hover {
+      background-color: #357a38;  /* Even darker for hover in dark mode */
+    }
+
+    .score-container div {
+      margin: 5px 0;
+      color: var(--text-color);
+    }
+
+    .score-container span {
+      font-weight: bold;
+      color: var(--text-color);
+    }
+
+    .dino {
+      position: relative;
+      width: 40px;
+      height: 43px;
+      bottom: 0;
+      font-size: 40px;
+      line-height: 1;
+      background-color: transparent;
+      transform: scaleX(-1);  /* This will flip the dinosaur horizontally */
+    }
+
+    .dino::before {
+      content: '🦖';
+      position: absolute;
+      bottom: 0;
+    }
+
+    .obstacle {
+      position: absolute;
+      bottom: 0;
+      right: -20px;
+      width: 20px;
+      height: 40px;
+      font-size: 40px;
+      line-height: 1;
+      background-color: transparent;
+    }
+
+    .obstacle::before {
+      content: '🌵';
+      position: absolute;
+      bottom: 0;
+    }
+
+    .obstacle-moving {
+      animation: moveObstacle 2s linear infinite;
+    }
+
+    @keyframes moveObstacle {
+      from {
+        right: -20px;
+      }
+      to {
+        right: 100%;
+      }
+    }
+
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      padding: 10px 20px;
+      border-radius: 20px;
+      border: 2px solid var(--border-color);
+      background-color: transparent;
+      color: var(--text-color);
+      cursor: pointer;
+      font-family: 'Righteous', cursive;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theme-toggle:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Day Mode Elements */
+    .sun {
+      position: fixed;
+      top: 100px;
+      left: 100px;
+      width: 80px;
+      height: 80px;
+      background: #ffd700;
+      border-radius: 50%;
+      box-shadow: 0 0 50px #ffd700;
+      display: none;
+      z-index: -1;
+    }
+
+    /* Night Mode Elements */
+    .moon {
+      position: fixed;
+      top: 100px;        /* Same position as sun */
+      left: 100px;       /* Same position as sun */
+      width: 80px;       /* Same size as sun */
+      height: 80px;      /* Same size as sun */
+      background: #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 0 20px #ffffff;
+      display: none;
+      z-index: -1;
+    }
+
+    .star {
+      position: fixed;
+      background: white;
+      width: 2px;
+      height: 2px;
+      border-radius: 50%;
+      display: none;
+      z-index: -1;
+    }
+
+    .shooting-star {
+      position: fixed;
+      width: 4px;
+      height: 4px;
+      background: white;
+      border-radius: 50%;
+      display: none;
+      animation: shootingStar 2s linear infinite;
+    }
+
+    @keyframes shootingStar {
+      from {
+        transform: translate(0, 0);
+        opacity: 1;
+      }
+      to {
+        transform: translate(-300px, 300px);
+        opacity: 0;
+      }
+    }
+
+    /* Remove desert scenery styles */
+    .desert-background,
+    .cactus-bg,
+    .sand-dune {
+      display: none;
+    }
+
+    /* Or simply delete these style blocks entirely */
+  </style>
+</head>
+<body>
+  <button class="theme-toggle">
+    <span class="theme-icon">☀️</span>
+    <span class="theme-text">Light Mode</span>
+  </button>
+  <div class="sun"></div>
+  <div class="moon"></div>
+  <h1 class="game-title">Deep's Dino</h1>
+  <div class="game-container">
+    <div class="score-container">
+      <div>Score: <span id="score">0</span></div>
+      <div>High Score: <span id="highScore">0</span></div>
+      <button class="reset-button" onclick="resetHighScore()">Reset High Score</button>
+    </div>
+    <div class="dino"></div>
+    <div class="obstacle"></div>
+  </div>
+
+  <script>
+    const dino = document.querySelector('.dino');
+    const gameContainer = document.querySelector('.game-container');
+    let obstacles = [];
+    let isJumping = false;
+    let score = 0;
+    let highScore = localStorage.getItem('highScore') || 0;
+    let isGameOver = false;
+
+    // Display initial high score
+    document.getElementById('highScore').textContent = highScore;
+
+    function jump() {
+      if (!isJumping) {
+        isJumping = true;
+        
+        const jumpAnimation = `
+          @keyframes jump {
+            0% { bottom: 0; }
+            50% { bottom: 150px; }
+            100% { bottom: 0; }
+          }
+        `;
+        
+        const styleSheet = document.createElement('style');
+        styleSheet.textContent = jumpAnimation;
+        document.head.appendChild(styleSheet);
+        
+        dino.style.animation = 'jump 0.5s ease-out';
+        
+        dino.addEventListener('animationend', function() {
+          dino.style.animation = '';
+          document.head.removeChild(styleSheet);
+          isJumping = false;
+        }, {once: true});
+      }
+    }
+
+    // Add keyboard event listener for jumping
+    document.addEventListener('keydown', (event) => {
+      if (event.code === 'Space' && !isGameOver) {
+        event.preventDefault(); // Prevent page scrolling
+        jump();
+      }
+    });
+
+    function createObstacle() {
+      if (!isGameOver) {
+        const obstacle = document.createElement('div');
+        obstacle.classList.add('obstacle');
+        
+        // Random size selection with adjusted heights
+        const sizes = [
+          { height: 30, jumpHeight: 80 },   // Small
+          { height: 50, jumpHeight: 120 },  // Medium
+          { height: 70, jumpHeight: 150 }   // Large
+        ];
+        const randomSize = sizes[Math.floor(Math.random() * sizes.length)];
+        
+        obstacle.style.height = `${randomSize.height}px`;
+        obstacle.style.animation = 'moveObstacle 2s linear';
+        
+        gameContainer.appendChild(obstacle);
+
+        obstacle.addEventListener('animationend', () => {
+          if (obstacle && obstacle.parentElement) {
+            obstacle.remove();
+          }
+        });
+
+        // Generate next obstacle after a random delay
+        const minDelay = 800;
+        const maxDelay = 1500;
+        const randomDelay = Math.random() * (maxDelay - minDelay) + minDelay;
+        if (!isGameOver) {
+          setTimeout(createObstacle, randomDelay);
+        }
+      }
+    }
+
+    function resetGame() {
+      // Remove all obstacles
+      const obstacles = document.querySelectorAll('.obstacle');
+      obstacles.forEach(obstacle => obstacle.remove());
+      
+      // Reset score
+      score = 0;
+      document.getElementById('score').textContent = '0';
+      
+      // Reset game state
+      isGameOver = false;
+      
+      // Start generating new obstacles
+      setTimeout(createObstacle, 1000);
+    }
+
+    function gameOver() {
+      isGameOver = true;
+      
+      // Create and show game over overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'game-over-overlay';
+      overlay.style.display = 'flex';
+      
+      const gameOverText = document.createElement('div');
+      gameOverText.className = 'game-over-text';
+      gameOverText.textContent = 'Game Over!';
+      
+      const finalScore = document.createElement('div');
+      finalScore.className = 'final-score';
+      finalScore.textContent = `Score: ${score}`;
+      
+      const restartButton = document.createElement('button');
+      restartButton.className = 'restart-button';
+      restartButton.textContent = 'Play Again';
+      restartButton.onclick = function() {
+        // Update high score before resetting
+        if (score > highScore) {
+          highScore = score;
+          localStorage.setItem('highScore', highScore);
+          document.getElementById('highScore').textContent = highScore;
+        }
+        
+        // Reset game state
+        isGameOver = false;
+        score = 0;
+        document.getElementById('score').textContent = '0';
+        
+        // Remove all obstacles
+        const obstacles = document.querySelectorAll('.obstacle');
+        obstacles.forEach(obstacle => obstacle.remove());
+        
+        // Remove the overlay
+        gameContainer.removeChild(overlay);
+        
+        // Start generating new obstacles
+        setTimeout(createObstacle, 1000);
+      };
+      
+      overlay.appendChild(gameOverText);
+      overlay.appendChild(finalScore);
+      overlay.appendChild(restartButton);
+      gameContainer.appendChild(overlay);
+    }
+
+    // Check for collisions
+    setInterval(() => {
+      if (!isGameOver) {
+        const dinoRect = dino.getBoundingClientRect();
+        const obstacles = document.querySelectorAll('.obstacle');
+        
+        obstacles.forEach(obstacle => {
+          const obstacleRect = obstacle.getBoundingClientRect();
+          
+          if (
+            dinoRect.right > obstacleRect.left &&
+            dinoRect.left < obstacleRect.right &&
+            dinoRect.bottom > obstacleRect.top
+          ) {
+            gameOver();
+          }
+        });
+      }
+    }, 10);
+
+    // Update score
+    setInterval(() => {
+      if (!isGameOver) {
+        score++;
+        document.getElementById('score').textContent = score;
+        document.getElementById('highScore').textContent = highScore;
+      }
+    }, 100);
+
+    // Start the game initially
+    createObstacle();
+
+    const themeToggle = document.querySelector('.theme-toggle');
+    const themeIcon = document.querySelector('.theme-icon');
+    const themeText = document.querySelector('.theme-text');
+    let isDarkMode = false;
+
+    function createStars() {
+      for(let i = 0; i < 50; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        star.style.top = `${Math.random() * 100}vh`;
+        star.style.left = `${Math.random() * 100}vw`;
+        star.style.animation = `twinkle ${2 + Math.random() * 3}s ease-in-out infinite`;
+        document.body.appendChild(star);
+      }
+    }
+
+    function createShootingStars() {
+      setInterval(() => {
+        if(isDarkMode) {
+          const shootingStar = document.createElement('div');
+          shootingStar.className = 'shooting-star';
+          shootingStar.style.top = `${Math.random() * 50}vh`;
+          shootingStar.style.left = `${Math.random() * 100}vw`;
+          document.body.appendChild(shootingStar);
+          
+          setTimeout(() => {
+            shootingStar.remove();
+          }, 2000);
+        }
+      }, 4000);
+    }
+
+    function toggleTheme() {
+      isDarkMode = !isDarkMode;
+      document.body.classList.toggle('dark-mode');
+      
+      const stars = document.querySelectorAll('.star');
+      const sun = document.querySelector('.sun');
+      const moon = document.querySelector('.moon');
+
+      if(isDarkMode) {
+        themeIcon.textContent = '🌙';
+        themeText.textContent = 'Dark Mode';
+        stars.forEach(star => star.style.display = 'block');
+        sun.style.display = 'none';
+        moon.style.display = 'block';
+      } else {
+        themeIcon.textContent = '☀️';
+        themeText.textContent = 'Light Mode';
+        stars.forEach(star => star.style.display = 'none');
+        sun.style.display = 'block';
+        moon.style.display = 'none';
+      }
+    }
+
+    // Initialize theme elements
+    createStars();
+    createShootingStars();
+
+    // Set initial light mode state
+    const sun = document.querySelector('.sun');
+    sun.style.display = 'block';
+
+    themeToggle.addEventListener('click', toggleTheme);
+
+    function resetHighScore() {
+        highScore = 0;
+        localStorage.setItem('highScore', '0');
+        document.getElementById('highScore').textContent = '0';
+    }
+  </script>
+</body>
+</html>
